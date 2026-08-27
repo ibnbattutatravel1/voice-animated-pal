@@ -1,6 +1,6 @@
 # Kinetic Pal
 
-i want charastic i denitical and deisn gidecntaical pleas euse all tools u have from images to threejs to any tools : عايز الصفحه دي تتعمل كتبيطق قوي متوافق مع الموبايل و الجاهزهو عايز الشخص الكرتوني ده قوي جدا و يتفاعل معا لصوت و الكلام لوو فيه كلام يتكلم و يكون جميل ويتحرك و تفاعلي جدا وعايز افضل ما عندك و يكون فيه صوت للتربة و هكذا كامل شامكل
+i want charastic i denitical and deisn gidecntaical pleas euse all tools u have from images to threejs to any tools : عايز الصفحه دي تتعمل كتبيطق قوي متوافق مع الموبايل و الجاهزهو عايز الشخص الكرتوني ده قوي جدا و يتفاعل معا لصوت و الكلام لووdddddddddddddddddddddd فيه كلام يتكلم و يكون جميل ويتحرك و تفاعلي جدا وعايز افضل ما عندك و يكون فيه صوت للتربة و هكذا كامل شامكل
 
 This project was built with [Lovable](https://lovable.dev).
 
