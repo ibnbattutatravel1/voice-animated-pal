@@ -12,30 +12,30 @@ import {
   Hand,
   X,
 } from "lucide-react";
+
 import bgScene from "@/assets/scene-bg.jpg";
-import { Mascot } from "@/components/Mascot";
 import { useVoiceSession } from "@/hooks/useVoiceSession";
 import { sfx, unlockAudio } from "@/lib/audio-fx";
+import type { PalBrain } from "@/lib/pal-brain";
+import type { PalSignal } from "@/lib/pal-signal";
 
-const AuraCanvas = lazy(() =>
-  import("@/components/AuraCanvas").then((m) => ({ default: m.AuraCanvas })),
-);
+const PalStage = lazy(() => import("@/components/PalStage").then((m) => ({ default: m.PalStage })));
 
 export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Nova — Live Voice Companion for Focus & Daily Flow" },
+      { title: "Nova — Live 3D Voice Companion for Focus & Daily Flow" },
       {
         name: "description",
         content:
-          "Talk to Nova, an interactive 3D-style voice companion that listens, replies out loud and reacts to your voice in real time.",
+          "Talk to Nova, an interactive 3D character that lip-syncs to every word, follows you with its eyes, waves back and reacts to your voice in real time.",
       },
-      { property: "og:title", content: "Nova — Live Voice Companion" },
+      { property: "og:title", content: "Nova — Live 3D Voice Companion" },
       {
         property: "og:description",
         content:
-          "An interactive animated companion that listens, speaks and reacts to your voice. Mobile-ready live session.",
+          "An interactive 3D companion that listens, speaks and reacts to your voice. Mobile-ready live session.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -51,20 +51,60 @@ const statusCopy: Record<string, string> = {
   speaking: "Speaking",
 };
 
+/**
+ * Reads the live voice level straight off the signal object and writes to the
+ * DOM. Keeping it out of React state means the 3D canvas never re-renders just
+ * because the microphone twitched.
+ */
+function VoiceMeter({ signal }: { signal: PalSignal }) {
+  const bars = useRef<Array<HTMLSpanElement | null>>([]);
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const t = performance.now() / 1000;
+      for (let i = 0; i < bars.current.length; i++) {
+        const el = bars.current[i];
+        if (!el) continue;
+        const wobble = 0.45 + 0.55 * Math.abs(Math.sin(t * 6 + i * 1.1));
+        const h = 0.2 + signal.level * wobble * 1.6;
+        el.style.transform = `scaleY(${Math.max(0.16, Math.min(1, h))})`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [signal]);
+
+  return (
+    <span className="flex h-4 items-center gap-[3px]" aria-hidden>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <span
+          key={i}
+          ref={(el) => {
+            bars.current[i] = el;
+          }}
+          className="h-4 w-[3px] origin-center rounded-full bg-primary/80 transition-none"
+        />
+      ))}
+    </span>
+  );
+}
+
 function LiveSession() {
   const {
     supported,
     listening,
     mood,
-    level,
     interim,
     messages,
     error,
+    signal,
     send,
     toggleMic,
     endSession,
   } = useVoiceSession();
 
+  const brainRef = useRef<PalBrain | null>(null);
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState("");
   const [showTranscript, setShowTranscript] = useState(false);
@@ -74,11 +114,19 @@ function LiveSession() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, showTranscript]);
 
+  // Dev handle so the rig can be driven straight from the console:
+  //   __pal.signal.mouth.jaw = 1        __pal.brain.wave()
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    Object.defineProperty(window, "__pal", {
+      configurable: true,
+      value: { signal, brain: brainRef },
+    });
+  }, [signal]);
+
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
   const bubble =
-    interim ||
-    lastAssistant?.text ||
-    (listening ? "I'm all ears…" : "How can I help you today?");
+    interim || lastAssistant?.text || (listening ? "I'm all ears…" : "How can I help you today?");
 
   return (
     <main
@@ -114,10 +162,8 @@ function LiveSession() {
             <span
               className={`size-2 rounded-full ${mood === "idle" ? "bg-muted-foreground/50" : "bg-success animate-pulse"}`}
             />
-            <AudioLines className="size-4 text-primary" />
-            <span className="text-xs font-medium text-primary sm:text-sm">
-              {statusCopy[mood]}
-            </span>
+            <VoiceMeter signal={signal} />
+            <span className="text-xs font-medium text-primary sm:text-sm">{statusCopy[mood]}</span>
           </div>
         </header>
 
@@ -135,16 +181,20 @@ function LiveSession() {
               <Hand className="inline size-[0.8em] -translate-y-1 animate-float text-primary" />
             </h1>
             <p className="mt-4 max-w-md text-sm text-muted-foreground sm:text-base">
-              Let&apos;s keep the conversation going. Ask me anything out loud, or type — I
-              answer with my own voice.
+              Talk to me out loud or type — I answer with my own voice, and my mouth, eyes and hands
+              move along with every word.
             </p>
 
             <div className="glass mt-5 inline-flex max-w-full items-center gap-2 rounded-full px-4 py-2.5">
               <AudioLines className="size-4 shrink-0 text-primary" />
               <span className="truncate text-sm">
-                {listening ? interim || "I'm speaking…" : "Tap Unmute to talk"}
+                {listening ? interim || "I'm all ears…" : "Tap Unmute to talk"}
               </span>
             </div>
+
+            <p className="mt-3 text-xs text-muted-foreground">
+              Tip: tap me, or move your cursor — I&apos;ll follow you.
+            </p>
 
             {!supported && (
               <p className="mt-3 text-xs text-muted-foreground">
@@ -156,29 +206,29 @@ function LiveSession() {
           </div>
 
           {/* character stage */}
-          <div className="order-1 relative flex min-h-[46vh] items-center justify-center md:order-2 md:min-h-[60vh]">
-            <div className="pointer-events-none absolute inset-0">
-              <Suspense fallback={null}>
-                <AuraCanvas level={level} />
-              </Suspense>
-            </div>
+          <div className="order-1 relative flex min-h-[52vh] items-center justify-center md:order-2 md:min-h-[68vh]">
+            <Suspense fallback={null}>
+              <PalStage
+                signal={signal}
+                brainRef={brainRef}
+                className="absolute inset-0 cursor-pointer touch-none select-none"
+              />
+            </Suspense>
 
             {/* pulse rings */}
             {(listening || mood === "speaking") && (
               <>
-                <span className="pointer-events-none absolute size-52 rounded-full border border-primary/30 animate-pulse-ring sm:size-64" />
+                <span className="pointer-events-none absolute bottom-[8%] size-52 rounded-full border border-primary/25 animate-pulse-ring sm:size-64" />
                 <span
-                  className="pointer-events-none absolute size-52 rounded-full border border-primary/20 animate-pulse-ring sm:size-64"
+                  className="pointer-events-none absolute bottom-[8%] size-52 rounded-full border border-primary/15 animate-pulse-ring sm:size-64"
                   style={{ animationDelay: "0.9s" }}
                 />
               </>
             )}
 
-            <div className="glass absolute left-0 top-2 max-w-[62%] rounded-3xl rounded-bl-md px-4 py-3 text-sm animate-rise sm:left-2 sm:text-base">
+            <div className="glass pointer-events-none absolute left-0 top-2 max-w-[62%] rounded-3xl rounded-bl-md px-4 py-3 text-sm animate-rise sm:left-2 sm:text-base">
               {bubble}
             </div>
-
-            <Mascot level={level} mood={mood} />
           </div>
         </section>
 
@@ -201,6 +251,15 @@ function LiveSession() {
               hint={listening ? "Stop listening" : "Enable your mic"}
               active={listening}
               onClick={toggleMic}
+            />
+            <ControlButton
+              icon={<Hand className="size-5" />}
+              label="Wave"
+              hint="Say hi back"
+              onClick={() => {
+                sfx.tap();
+                brainRef.current?.wave();
+              }}
             />
             <ControlButton
               icon={<MessageSquareText className="size-5" />}
