@@ -28,17 +28,20 @@ function Particles({ level, hue }: { level: number; hue: number }) {
     if (!pts) return;
     const dt = Math.min(delta, 0.05);
     const t = state.clock.elapsedTime;
-    const arr = pts.geometry.attributes.position.array as Float32Array;
+    const posAttr = pts.geometry.attributes["position"];
+    if (!posAttr) return;
+    const arr = posAttr.array as Float32Array;
     const boost = 1 + level * 0.9;
     for (let i = 0; i < COUNT; i++) {
-      const r = seeds[i * 3] * boost;
-      const a = seeds[i * 3 + 1] + t * seeds[i * 3 + 2] * 0.12;
+      const r = (seeds[i * 3] ?? 0) * boost;
+      const spin = seeds[i * 3 + 2] ?? 0;
+      const a = (seeds[i * 3 + 1] ?? 0) + t * spin * 0.12;
       arr[i * 3] = Math.cos(a) * r;
       arr[i * 3 + 2] = Math.sin(a) * r;
-      arr[i * 3 + 1] += Math.sin(t * seeds[i * 3 + 2] + i) * dt * 0.25;
-      if (arr[i * 3 + 1] > 1.9) arr[i * 3 + 1] = -1.9;
+      arr[i * 3 + 1] = (arr[i * 3 + 1] ?? 0) + Math.sin(t * spin + i) * dt * 0.25;
+      if ((arr[i * 3 + 1] ?? 0) > 1.9) arr[i * 3 + 1] = -1.9;
     }
-    pts.geometry.attributes.position.needsUpdate = true;
+    posAttr.needsUpdate = true;
     pts.rotation.y += dt * 0.06;
     const s = 1 + level * 0.12;
     pts.scale.setScalar(s);
