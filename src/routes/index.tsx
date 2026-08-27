@@ -9,6 +9,7 @@ import {
   Sparkles,
   AudioLines,
   Send,
+  Hand,
   X,
 } from "lucide-react";
 import bgScene from "@/assets/scene-bg.jpg";
@@ -91,7 +92,7 @@ function LiveSession() {
         aria-hidden
         width={1536}
         height={1024}
-        className="pointer-events-none absolute right-0 top-0 h-full w-full object-cover opacity-45 [mask-image:linear-gradient(to_left,black_10%,transparent_80%)] md:w-[62%]"
+        className="pointer-events-none absolute right-0 top-0 h-full w-full object-cover opacity-30 sm:opacity-45 [mask-image:linear-gradient(to_left,black_10%,transparent_80%)] md:w-[62%]"
       />
 
       <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col px-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:px-6">
@@ -130,7 +131,8 @@ function LiveSession() {
             <h1 className="mt-4 text-[clamp(2.2rem,8vw,4rem)] font-extrabold leading-[1.05] tracking-tight">
               Hi there,
               <br />
-              <span className="text-primary">I&apos;m listening!</span> 👋
+              <span className="text-primary">I&apos;m listening!</span>{" "}
+              <Hand className="inline size-[0.8em] -translate-y-1 animate-float text-primary" />
             </h1>
             <p className="mt-4 max-w-md text-sm text-muted-foreground sm:text-base">
               Let&apos;s keep the conversation going. Ask me anything out loud, or type — I
