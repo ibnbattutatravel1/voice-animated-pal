@@ -16,6 +16,7 @@ import {
 import bgScene from "@/assets/scene-bg.jpg";
 import { useVoiceSession } from "@/hooks/useVoiceSession";
 import { sfx, unlockAudio } from "@/lib/audio-fx";
+import { Speaker } from "@/lib/speech/speaker";
 import type { PalBrain } from "@/lib/pal-brain";
 import type { PalSignal } from "@/lib/pal-signal";
 
@@ -43,6 +44,16 @@ export const Route = createFileRoute("/")({
   }),
   component: LiveSession,
 });
+
+/**
+ * Both audio engines unlock on the same gesture. iOS rejects `speechSynthesis`
+ * unless the first `speak()` happens synchronously inside a real user gesture —
+ * one `await` first and it is refused for the rest of the page's life.
+ */
+function primeAudio() {
+  unlockAudio();
+  Speaker.prime();
+}
 
 const statusCopy: Record<string, string> = {
   idle: "Ready",
@@ -98,6 +109,7 @@ function LiveSession() {
     interim,
     messages,
     error,
+    notice,
     signal,
     send,
     toggleMic,
@@ -131,7 +143,7 @@ function LiveSession() {
   return (
     <main
       className="relative min-h-[100dvh] overflow-hidden pb-[env(safe-area-inset-bottom)]"
-      onPointerDown={unlockAudio}
+      onPointerDown={primeAudio}
     >
       {/* ambient scene */}
       <img
@@ -203,6 +215,7 @@ function LiveSession() {
               </p>
             )}
             {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+            {notice && <p className="mt-3 text-xs text-muted-foreground">{notice}</p>}
           </div>
 
           {/* character stage */}
@@ -241,6 +254,7 @@ function LiveSession() {
               label="Type"
               hint="Send a message"
               onClick={() => {
+                primeAudio();
                 sfx.tap();
                 setTyping((v) => !v);
               }}
@@ -250,7 +264,10 @@ function LiveSession() {
               label={listening ? "Mute" : "Unmute"}
               hint={listening ? "Stop listening" : "Enable your mic"}
               active={listening}
-              onClick={toggleMic}
+              onClick={() => {
+                primeAudio();
+                toggleMic();
+              }}
             />
             <ControlButton
               icon={<Hand className="size-5" />}

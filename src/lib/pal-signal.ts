@@ -1,4 +1,4 @@
-import type { MouthShape } from "./viseme";
+import { restFrame, restShape, type MouthShape, type SpeechFrame } from "./lipsync/types";
 
 export type Mood = "idle" | "listening" | "thinking" | "speaking";
 
@@ -20,6 +20,12 @@ export type PalSignal = {
   speaking: boolean;
   /** Current mouth target from the lip-sync engine. */
   mouth: MouthShape;
+  /**
+   * The whole performance bundle: prosody, accents, brows, nods, breath and the
+   * queued events. Mirrors `mouth` and `accent`, which are kept as their own
+   * fields so nothing has to reach through two objects on the hot path.
+   */
+  speech: SpeechFrame;
   /** Decaying spike at each spoken word onset. */
   accent: number;
   /** Pointer in -1..1 view space, and whether it is currently over the stage. */
@@ -28,6 +34,10 @@ export type PalSignal = {
   pointerActive: boolean;
   /** One-shot impulses; the brain consumes and clears them. */
   poke: number;
+  /** Where the poke landed, in model space. */
+  pokeX: number;
+  pokeY: number;
+  pokeZ: number;
   waveRequest: number;
   /** Honour the OS "reduce motion" setting. */
   reduced: boolean;
@@ -39,12 +49,16 @@ export const createSignal = (): PalSignal => ({
   peak: 0,
   listening: false,
   speaking: false,
-  mouth: { jaw: 0, wide: 0, round: 0, press: 0 },
+  mouth: restShape(),
+  speech: restFrame(),
   accent: 0,
   pointerX: 0,
   pointerY: 0,
   pointerActive: false,
   poke: 0,
+  pokeX: 0,
+  pokeY: 0,
+  pokeZ: 0,
   waveRequest: 0,
   reduced: false,
 });

@@ -1,14 +1,30 @@
 // Tiny WebAudio synth for UI sound effects — no asset downloads needed.
 let ctx: AudioContext | null = null;
+let failed = false;
 
+/**
+ * Safari caps a page at four AudioContexts and throws on the fifth, so this can
+ * fail — and it is called from the same pointerdown handler as the mic button.
+ * An escaping throw there would take the button's whole click with it, so a
+ * missing sound effect must never be more than a missing sound effect.
+ */
 function getCtx(): AudioContext | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || failed) return null;
   if (!ctx) {
     const AC = window.AudioContext ?? window.webkitAudioContext;
     if (!AC) return null;
-    ctx = new AC();
+    try {
+      ctx = new AC();
+    } catch {
+      failed = true;
+      return null;
+    }
   }
-  if (ctx.state === "suspended") void ctx.resume();
+  try {
+    if (ctx.state === "suspended") void ctx.resume();
+  } catch {
+    /* a context the browser has torn down; the tones below simply go quiet */
+  }
   return ctx;
 }
 
@@ -56,4 +72,41 @@ export const sfx = {
       { freq: 1174.66, at: 0.07, dur: 0.14, type: "triangle", gain: 0.07 },
     ]),
   error: () => play([{ freq: 220, at: 0, dur: 0.3, type: "sawtooth", gain: 0.06 }]),
+  breath,
 };
+
+/**
+ * A breath, from one filtered noise burst.
+ *
+ * It fills the dead air between `speak()` and the first audio — every engine has
+ * 100–400 ms of it — and the long comedy pauses. The **direction of the sweep**
+ * is what makes it read: an inhale climbs as the throat opens, an exhale falls.
+ * Reverse them and it sounds like a leak.
+ */
+export function breath(kind: "in" | "out" = "in", ms = 180, gain = 0.035) {
+  const c = getCtx();
+  if (!c) return;
+  const dur = Math.max(0.04, ms / 1000);
+  const n = Math.floor(c.sampleRate * dur);
+  const buf = c.createBuffer(1, n, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.6;
+
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const bp = c.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.Q.value = 0.7;
+  const t = c.currentTime;
+  bp.frequency.setValueAtTime(kind === "in" ? 420 : 1500, t);
+  bp.frequency.exponentialRampToValueAtTime(kind === "in" ? 1500 : 420, t + dur);
+
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain, t + dur * 0.45);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+  src.connect(bp).connect(g).connect(c.destination);
+  src.start(t);
+  src.stop(t + dur + 0.02);
+}

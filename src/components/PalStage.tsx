@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, useProgress } from "@react-three/drei";
-import { Suspense, useCallback, useMemo, useRef } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 
 import { PalCharacter } from "@/components/PalCharacter";
@@ -84,10 +84,36 @@ function GroundGlow({ signal }: { signal: PalSignal }) {
   );
 }
 
+/**
+ * A soft round dot. Without it `pointsMaterial` draws hard little squares, which
+ * read as dead pixels rather than motes of light whenever one crosses the face.
+ */
+function useMoteSprite() {
+  return useMemo(() => {
+    if (typeof document === "undefined") return null;
+    const S = 64;
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = S;
+    const g = cv.getContext("2d");
+    if (!g) return null;
+    const grad = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.35, "rgba(255,255,255,0.55)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, S, S);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }, []);
+}
+
 /** Motes of light that swirl around the Pal and flare with its voice. */
 function Aura({ signal, count = 220 }: { signal: PalSignal; count?: number }) {
   const points = useRef<THREE.Points>(null);
   const level = useRef(0);
+  const sprite = useMoteSprite();
+  useEffect(() => () => sprite?.dispose(), [sprite]);
 
   const { positions, seeds, colors } = useMemo(() => {
     const positions = new Float32Array(count * 3);
@@ -95,8 +121,11 @@ function Aura({ signal, count = 220 }: { signal: PalSignal; count?: number }) {
     const colors = new Float32Array(count * 3);
     const c = new THREE.Color();
     for (let i = 0; i < count; i++) {
-      const r = 1.15 + Math.random() * 1.5;
       const a = Math.random() * Math.PI * 2;
+      // Motes drifting between the camera and the face read as dirt on the lens,
+      // so the ring is pushed out where it would cross the body's silhouette.
+      const front = Math.max(0, Math.sin(a));
+      const r = 1.15 + front * 0.75 + Math.random() * 1.5;
       const y = Math.random() * 2.2;
       positions.set([Math.cos(a) * r, y, Math.sin(a) * r], i * 3);
       seeds.set([r, a, 0.25 + Math.random() * 1.1], i * 3);
@@ -128,7 +157,7 @@ function Aura({ signal, count = 220 }: { signal: PalSignal; count?: number }) {
     attr.needsUpdate = true;
     const m = pts.material as THREE.PointsMaterial;
     m.opacity = 0.34 + level.current * 0.45;
-    m.size = 0.028 + level.current * 0.022;
+    m.size = 0.046 + level.current * 0.034;
   });
 
   return (
@@ -139,7 +168,9 @@ function Aura({ signal, count = 220 }: { signal: PalSignal; count?: number }) {
       </bufferGeometry>
       <pointsMaterial
         vertexColors
-        size={0.03}
+        map={sprite}
+        alphaMap={sprite}
+        size={0.05}
         sizeAttenuation
         transparent
         opacity={0.4}

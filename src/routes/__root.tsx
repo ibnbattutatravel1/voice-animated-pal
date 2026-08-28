@@ -97,7 +97,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;800&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      {
+        rel: "icon",
+        type: "image/svg+xml",
+        href:
+          "data:image/svg+xml," +
+          encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
+              '<ellipse cx="16" cy="18" rx="12" ry="13" fill="#b9a7dd"/>' +
+              '<ellipse cx="16" cy="6" rx="3" ry="3" fill="#b9a7dd"/>' +
+              '<circle cx="11.5" cy="16" r="3.1" fill="#2a1f3a"/>' +
+              '<circle cx="20.5" cy="16" r="3.1" fill="#2a1f3a"/>' +
+              '<circle cx="12.6" cy="14.9" r="1" fill="#fff"/>' +
+              '<circle cx="21.6" cy="14.9" r="1" fill="#fff"/>' +
+              '<path d="M12 22q4 3 8 0" stroke="#5a3f52" stroke-width="1.6" ' +
+              'fill="none" stroke-linecap="round"/></svg>',
+          ),
+      },
     ],
   }),
   shellComponent: RootShell,
